@@ -45,8 +45,56 @@ type TaskInDB struct {
 	CreateAt time.Time `json:"createAt"`
 }
 
+// extractAnimeName 从文件名中提取番剧名称
+// 匹配格式: [番剧名] [集数] 标题 [其他信息]
+func extractAnimeName(title string) (string, bool) {
+	// 匹配以 [ 开头，包含中文、英文、数字、空格等字符，以 ] 结尾的模式
+	re := regexp.MustCompile(`^\[([^\]]+)\]\s*\[`)
+	matches := re.FindStringSubmatch(title)
+	if len(matches) >= 2 {
+		animeName := strings.TrimSpace(matches[1])
+		// 确保番剧名不为空且包含有效字符
+		if animeName != "" && len(animeName) > 0 {
+			return animeName, true
+		}
+	}
+	return "", false
+}
+
+// createAnimeSubfolder 为番剧创建子目录
+func createAnimeSubfolder(baseFolder, title string) (string, error) {
+	animeName, isAnime := extractAnimeName(title)
+	if !isAnime {
+		// 不是番剧格式，直接返回原目录
+		return baseFolder, nil
+	}
+	
+	// 过滤文件名中的特殊字符
+	safeAnimeName := util.FilterFileName(animeName)
+	if safeAnimeName == "" {
+		return baseFolder, nil
+	}
+	
+	// 创建番剧子目录
+	animeFolder := filepath.Join(baseFolder, safeAnimeName)
+	err := os.MkdirAll(animeFolder, os.ModePerm)
+	if err != nil {
+		return baseFolder, fmt.Errorf("创建番剧目录失败: %v", err)
+	}
+	
+	return animeFolder, nil
+}
+
 func (task *TaskInDB) FilePath() string {
-	return filepath.Join(task.Folder,
+	// 尝试为番剧创建子目录
+	actualFolder, err := createAnimeSubfolder(task.Folder, task.Title)
+	if err != nil {
+		// 如果创建子目录失败，使用原目录
+		log.Printf("创建番剧子目录失败，使用原目录: %v", err)
+		actualFolder = task.Folder
+	}
+	
+	return filepath.Join(actualFolder,
 		fmt.Sprintf("%s %s.mp4", task.Title,
 			strings.Replace(base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(task.ID, 10))), "=", "", -1),
 		),
@@ -124,8 +172,10 @@ func (task *Task) Start() {
 
 	outputPath := task.TaskInDB.FilePath()
 
-	videoPath := filepath.Join(task.Folder, strconv.FormatInt(task.ID, 10)+".video")
-	audioPath := filepath.Join(task.Folder, strconv.FormatInt(task.ID, 10)+".audio")
+	// 获取实际使用的目录（可能是番剧子目录）
+	actualFolder := filepath.Dir(outputPath)
+	videoPath := filepath.Join(actualFolder, strconv.FormatInt(task.ID, 10)+".video")
+	audioPath := filepath.Join(actualFolder, strconv.FormatInt(task.ID, 10)+".audio")
 	GlobalMergeSem.Acquire()
 	err = task.MergeMedia(outputPath, videoPath, audioPath)
 	if err != nil {
@@ -260,7 +310,13 @@ func DownloadMedia(client *bilibili.BiliClient, _url string, task *Task, mediaTy
 	}
 
 	filename := strconv.FormatInt(task.ID, 10) + "." + mediaType
-	filepath := filepath.Join(task.Folder, filename)
+	// 获取实际使用的目录（可能是番剧子目录）
+	actualFolder, err := createAnimeSubfolder(task.Folder, task.Title)
+	if err != nil {
+		// 如果创建子目录失败，使用原目录
+		actualFolder = task.Folder
+	}
+	filepath := filepath.Join(actualFolder, filename)
 
 	progress := newProgressBar(resp.ContentLength)
 

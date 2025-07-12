@@ -7,3 +7,6 @@ static/
 download/
 build/
 .VSCodeCounter/
+package-lock.json
+server/bilidown
+server/bilidown.exe
