@@ -19,6 +19,9 @@ export default () => {
             div({ class: 'nav-item', hidden: () => !GLOBAL_HAS_LOGIN.val },
                 a({ class: classStr('setting'), href: '#/setting' }, '设置中心')
             ),
+            div({ class: 'nav-item', hidden: () => !GLOBAL_HAS_LOGIN.val },
+                a({ class: classStr('help'), href: '#/help' }, '帮助')
+            ),
             div({ class: 'nav-item', hidden: GLOBAL_HAS_LOGIN },
                 a({ class: classStr('login'), href: '#/login' }, '扫码登录')
             ),

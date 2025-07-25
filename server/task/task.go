@@ -177,7 +177,8 @@ func (task *Task) Start() {
 	videoPath := filepath.Join(actualFolder, strconv.FormatInt(task.ID, 10)+".video")
 	audioPath := filepath.Join(actualFolder, strconv.FormatInt(task.ID, 10)+".audio")
 	GlobalMergeSem.Acquire()
-	err = task.MergeMedia(outputPath, videoPath, audioPath)
+	// 修改为带重试的合成
+	err = task.MergeMediaWithRetry(outputPath, videoPath, audioPath)
 	if err != nil {
 		GlobalMergeSem.Release()
 		task.UpdateStatus(db, "error", fmt.Errorf("task.MergeMedia: %v", err))
@@ -248,6 +249,22 @@ func (task *Task) MergeMedia(outputPath string, inputPaths ...string) error {
 	}
 	task.MergeProgress = 1
 	return nil
+}
+
+// 合并音视频，带重试
+func (task *Task) MergeMediaWithRetry(outputPath string, inputPaths ...string) error {
+	const maxRetry = 3
+	var lastErr error
+	for i := 0; i < maxRetry; i++ {
+		err := task.MergeMedia(outputPath, inputPaths...)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		log.Printf("合成失败，第%d次重试: %v", i+1, err)
+		time.Sleep(time.Second)
+	}
+	return fmt.Errorf("合成多次失败，最后错误: %w", lastErr)
 }
 
 func GetVideoURL(medias []bilibili.Media, format common.MediaFormat) (string, error) {
