@@ -1,6 +1,6 @@
 # Bilidown API 文档
 
-## 新增API接口
+## API接口
 
 ### 1. 通过URL下载视频
 
@@ -54,29 +54,29 @@
       "video": 1.0,    // 视频下载进度 (0-1)
       "merge": 1.0     // 合成进度 (0-1)
     },
-    "download_url": "/api/downloadVideo?path=%2Fpath%2Fto%2Fvideo.mp4",  // URL编码的下载链接
-    "file_path": "/path/to/video.mp4",
-    "file_size": 1024000,  // 文件大小（字节）
-    "error": "错误信息"     // 仅当status=error时
+    "download_url": "/api/downloadVideo?task_id=12345",
+    "file_path": "[视频标题] [UP主] 分P标题",
+    "file_size": 1024000  // 文件大小（字节）
   }
 }
 ```
 
 ### 3. 下载视频文件
 
-**接口地址**: `GET /api/downloadVideo?path=<URL编码的文件路径>`
+**接口地址**: `GET /api/downloadVideo?task_id=12345`
 
 **功能**: 下载已完成的视频文件
 
 **请求参数**:
-- `path`: URL编码的文件路径（必需）
+- `task_id`: 任务ID（必需）
 
 **响应**: 直接返回视频文件流，自动设置下载文件名
 
-**URL编码说明**:
-- 返回的`download_url`中的文件路径已经过URL编码
+**说明**:
+- 使用任务ID标识文件，安全可靠
+- 自动设置正确的下载文件名
 - 支持中文文件名和特殊字符
-- 浏览器可以直接使用该链接下载文件
+- 跨平台兼容
 
 ## 使用流程
 
@@ -99,8 +99,7 @@ curl "http://127.0.0.1:8098/api/getTaskStatus?task_id=12345"
 
 3. **下载完成后的文件**
 ```bash
-# 直接使用返回的download_url（已编码）
-curl "http://127.0.0.1:8098/api/downloadVideo?path=%2Fpath%2Fto%2Fvideo.mp4" \
+curl "http://127.0.0.1:8098/api/downloadVideo?task_id=12345" \
   -o "video.mp4"
 ```
 
@@ -120,11 +119,11 @@ task_id = response.json()["data"]["task_id"]
 while True:
     status = requests.get(f"http://127.0.0.1:8098/api/getTaskStatus?task_id={task_id}").json()
     if status["data"]["status"] == "done":
-        download_url = status["data"]["download_url"]  # 已编码的URL
+        download_url = status["data"]["download_url"]
         break
     time.sleep(2)
 
-# 3. 下载文件（URL已编码，可直接使用）
+# 3. 下载文件
 requests.get(f"http://127.0.0.1:8098{download_url}", stream=True)
 ```
 
@@ -152,5 +151,6 @@ requests.get(f"http://127.0.0.1:8098{download_url}", stream=True)
 2. 下载任务会在后台异步执行
 3. 支持番剧自动创建子目录功能
 4. 合成失败会自动重试3次
-5. **下载链接已URL编码，支持中文文件名，浏览器可直接使用**
-6. 文件下载时会自动设置正确的文件名 
+5. 使用任务ID下载文件，安全可靠
+6. 文件下载时会自动设置正确的文件名
+7. 支持中文文件名和特殊字符 

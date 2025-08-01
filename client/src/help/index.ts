@@ -82,8 +82,8 @@ export class HelpRoute implements VanComponent {
       "video": 1.0,    // 视频下载进度 (0-1)
       "merge": 1.0     // 合成进度 (0-1)
     },
-    "download_url": "/api/downloadVideo?path=%2Fpath%2Fto%2Fvideo.mp4",
-    "file_path": "/path/to/video.mp4",
+    "download_url": "/api/downloadVideo?task_id=12345",
+    "file_path": "[视频标题] [UP主] 分P标题",
     "file_size": 1024000
   }
 }`)),
@@ -98,11 +98,11 @@ export class HelpRoute implements VanComponent {
                                             p({ class: 'mb-2' }, '下载已完成的视频文件'),
                                             div({ class: 'bg-light p-3 rounded' },
                                                 h5({ class: 'text-primary' }, '接口地址'),
-                                                code('GET /api/downloadVideo?path=<URL编码的文件路径>'),
+                                                code('GET /api/downloadVideo?task_id=12345'),
                                             ),
                                             div({ class: 'bg-light p-3 rounded' },
                                                 h5({ class: 'text-primary' }, '说明'),
-                                                p({ class: 'mb-0' }, '直接返回视频文件流，自动设置下载文件名。返回的download_url中的文件路径已经过URL编码，支持中文文件名和特殊字符。'),
+                                                p({ class: 'mb-0' }, '直接返回视频文件流，自动设置下载文件名。推荐使用task_id参数，更安全且跨平台。'),
                                             ),
                                         )
                                     ),

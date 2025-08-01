@@ -68,20 +68,20 @@ func createAnimeSubfolder(baseFolder, title string) (string, error) {
 		// 不是番剧格式，直接返回原目录
 		return baseFolder, nil
 	}
-	
+
 	// 过滤文件名中的特殊字符
 	safeAnimeName := util.FilterFileName(animeName)
 	if safeAnimeName == "" {
 		return baseFolder, nil
 	}
-	
+
 	// 创建番剧子目录
 	animeFolder := filepath.Join(baseFolder, safeAnimeName)
 	err := os.MkdirAll(animeFolder, os.ModePerm)
 	if err != nil {
 		return baseFolder, fmt.Errorf("创建番剧目录失败: %v", err)
 	}
-	
+
 	return animeFolder, nil
 }
 
@@ -93,7 +93,7 @@ func (task *TaskInDB) FilePath() string {
 		log.Printf("创建番剧子目录失败，使用原目录: %v", err)
 		actualFolder = task.Folder
 	}
-	
+
 	return filepath.Join(actualFolder,
 		fmt.Sprintf("%s %s.mp4", task.Title,
 			strings.Replace(base64.StdEncoding.EncodeToString([]byte(strconv.FormatInt(task.ID, 10))), "=", "", -1),

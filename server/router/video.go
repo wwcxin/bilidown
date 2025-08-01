@@ -9,12 +9,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 // DownloadVideoRequest 通过URL下载视频的请求结构
@@ -160,32 +157,50 @@ func getPopularVideos(w http.ResponseWriter, r *http.Request) {
 }
 
 var downloadVideo = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	encodedPath := r.URL.Query().Get("path")
-	if encodedPath == "" {
-		http.Error(w, "path parameter is required", http.StatusBadRequest)
+	// 使用task_id参数
+	taskIDStr := r.URL.Query().Get("task_id")
+	if taskIDStr == "" {
+		http.Error(w, "task_id parameter is required", http.StatusBadRequest)
 		return
 	}
-
-	// URL解码路径
-	decodedPath, err := url.QueryUnescape(encodedPath)
+	
+	taskID, err := strconv.ParseInt(taskIDStr, 10, 64)
 	if err != nil {
-		http.Error(w, "invalid path encoding", http.StatusBadRequest)
+		http.Error(w, "invalid task_id", http.StatusBadRequest)
 		return
 	}
-
-	// 清理路径，确保安全
-	safePath := filepath.Clean(decodedPath)
-	safePath = strings.ReplaceAll(safePath, "\\", "/")
-
+	
+	// 从数据库获取任务信息
+	db := util.MustGetDB()
+	defer db.Close()
+	
+	taskInfo, err := task.GetTask(db, int(taskID))
+	if err != nil {
+		http.Error(w, "task not found", http.StatusNotFound)
+		return
+	}
+	
+	// 检查任务状态
+	if taskInfo.Status != "done" {
+		http.Error(w, "task not completed", http.StatusBadRequest)
+		return
+	}
+	
+	// 获取文件路径
+	filePath := taskInfo.FilePath()
+	
 	// 检查文件是否存在
-	if _, err := os.Stat(safePath); os.IsNotExist(err) {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		http.Error(w, "file not found", http.StatusNotFound)
 		return
 	}
-
-	// 设置下载头
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filepath.Base(safePath)))
-	http.ServeFile(w, r, safePath)
+	
+	// 设置下载头，使用任务标题作为文件名
+	fileName := taskInfo.Title + ".mp4"
+	// 过滤文件名中的特殊字符
+	fileName = util.FilterFileName(fileName)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
+	http.ServeFile(w, r, filePath)
 })
 
 var getSeasonsArchivesListFirstBvid = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -396,14 +411,12 @@ func getTaskStatus(w http.ResponseWriter, r *http.Request) {
 
 	// 如果任务完成，提供下载链接
 	if taskInfo.Status == "done" {
-		filePath := taskInfo.FilePath()
-		response.FilePath = filePath
-
-		// URL编码文件路径，确保浏览器兼容性
-		encodedPath := url.QueryEscape(filePath)
-		response.DownloadURL = fmt.Sprintf("/api/downloadVideo?path=%s", encodedPath)
+		// 使用任务ID而不是文件路径，更安全且跨平台
+		response.DownloadURL = fmt.Sprintf("/api/downloadVideo?task_id=%d", taskID)
+		response.FilePath = taskInfo.Title // 显示文件名而不是路径
 
 		// 获取文件大小
+		filePath := taskInfo.FilePath()
 		if fileInfo, err := os.Stat(filePath); err == nil {
 			response.FileSize = fileInfo.Size()
 		}
