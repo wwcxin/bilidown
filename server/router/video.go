@@ -3,10 +3,12 @@ package router
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"bilidown/bilibili"
+	"bilidown/task"
 	"bilidown/util"
 	"bilidown/util/res_error"
 )
@@ -132,6 +134,42 @@ func getPopularVideos(w http.ResponseWriter, r *http.Request) {
 }
 
 var downloadVideo = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 支持通过task_id下载
+	taskIDStr := r.URL.Query().Get("task_id")
+	if taskIDStr != "" {
+		taskID, err := strconv.Atoi(taskIDStr)
+		if err != nil {
+			util.Res{Success: false, Message: "task_id格式错误"}.Write(w)
+			return
+		}
+		
+		db := util.MustGetDB()
+		defer db.Close()
+		
+		_task, err := task.GetTask(db, taskID)
+		if err != nil {
+			util.Res{Success: false, Message: "任务不存在: " + err.Error()}.Write(w)
+			return
+		}
+		
+		if _task.Status != "done" {
+			util.Res{Success: false, Message: "任务尚未完成"}.Write(w)
+			return
+		}
+		
+		filePath := _task.FilePath()
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			util.Res{Success: false, Message: "文件不存在"}.Write(w)
+			return
+		}
+		
+		// 设置文件名
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.mp4\"", _task.Title))
+		http.ServeFile(w, r, filePath)
+		return
+	}
+	
+	// 原有的path参数支持
 	path := r.URL.Query().Get("path")
 	safePath := filepath.Clean(path)
 	safePath = strings.ReplaceAll(safePath, "\\", "/")

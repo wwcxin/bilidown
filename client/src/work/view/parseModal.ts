@@ -119,6 +119,11 @@ export class ParseModalComp implements VanComponent {
         const selectedPlayInfos = this.allPlayInfo.val.filter(info => info.selected.val)
         const workRoute = this.option.workRoute
         this.downloadBtnDisabled.val = true
+        
+        // 检查是否是番剧模式
+        const isSeasonMode = workRoute.videoInfoCardMode.val === 'season'
+        const seasonTitle = isSeasonMode ? workRoute.videoInfocardData.val.title : ''
+        
         // 需要传递给服务器，需要创建下载任务的数据列表
         createTask(selectedPlayInfos.map(info => {
             const badgeNotNum = !info.page.bandge.match(/^\d+$/)
@@ -154,7 +159,9 @@ export class ParseModalComp implements VanComponent {
                 owner,
                 audio: getAudioURL(info.info!),
                 duration: info.info!.dash.duration,
-                ...activeVideoInfo
+                ...activeVideoInfo,
+                // 添加番剧信息
+                seasonTitle: isSeasonMode ? seasonTitle : ''
             })
         })).then(() => {
             workRoute.parseModal.hide()

@@ -32,6 +32,9 @@ func API() *http.ServeMux {
 	router.HandleFunc("/downloadVideo", downloadVideo)
 	router.HandleFunc("/getSeasonsArchivesListFirstBvid", getSeasonsArchivesListFirstBvid)
 	router.HandleFunc("/getFavList", getFavList)
+	// 新增API端点
+	router.HandleFunc("/downloadVideoByURL", downloadVideoByURL)
+	router.HandleFunc("/getTaskStatus", getTaskStatus)
 	return router
 }
 

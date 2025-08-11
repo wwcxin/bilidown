@@ -201,6 +201,7 @@ func (task *Task) MergeMedia(outputPath string, inputPaths ...string) error {
 }
 
 func GetVideoURL(medias []bilibili.Media, format common.MediaFormat) (string, error) {
+	// 首先尝试查找指定的格式
 	for _, code := range []int{12, 7, 13} {
 		for _, item := range medias {
 			if item.ID == format && item.Codecid == code {
@@ -208,6 +209,24 @@ func GetVideoURL(medias []bilibili.Media, format common.MediaFormat) (string, er
 			}
 		}
 	}
+	
+	// 如果找不到指定格式，自动选择最佳可用格式
+	// 按优先级排序：120(4K) > 116(1080P60) > 80(1080P) > 64(720P) > 32(480P) > 16(360P)
+	priorityFormats := []common.MediaFormat{120, 116, 80, 64, 32, 16}
+	
+	for _, priorityFormat := range priorityFormats {
+		for _, item := range medias {
+			if item.ID == priorityFormat {
+				return item.BaseURL, nil
+			}
+		}
+	}
+	
+	// 如果还是找不到，返回第一个可用的格式
+	if len(medias) > 0 {
+		return medias[0].BaseURL, nil
+	}
+	
 	return "", errors.New("未找到对应视频分辨率格式")
 }
 

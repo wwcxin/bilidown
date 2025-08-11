@@ -23,6 +23,51 @@
 1. 前端采用 [Bootstrap](https://github.com/twbs/bootstrap) 和 [VanJS](https://github.com/vanjs-org/van) 构建，轻量美观
 2. 后端使用 Go 语言开发，数据库采用 SQlite，简化构建和部署过程
 3. 前端通过 [p-queue](https://github.com/sindresorhus/p-queue) 控制并发请求，加快批量解析速度
+4. 提供完整的 RESTful API 接口，支持第三方集成
+
+## API 接口
+
+### 核心API
+
+- `POST /api/downloadVideoByURL` - 通过URL创建下载任务
+- `GET /api/getTaskStatus?task_id=123` - 获取任务状态
+- `GET /api/downloadVideo?task_id=123` - 下载视频文件
+
+### 特色功能
+
+- **番剧目录自动创建**: 当解析番剧或剧集链接时，会自动在下载目录下创建以番剧名称命名的子目录
+  - 例如：`https://www.bilibili.com/bangumi/play/ss48690` (青之箱) 会创建 `download/青之箱/` 目录
+  - 支持番剧(ss)和剧集(ep)链接格式
+
+### 使用示例
+
+```javascript
+// 创建下载任务
+const response = await fetch('http://127.0.0.1:8098/api/downloadVideoByURL', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    url: 'https://www.bilibili.com/video/BV1LLDCYJEU3/',
+    format: 0
+  })
+});
+
+// 番剧下载示例
+const bangumiResponse = await fetch('http://127.0.0.1:8098/api/downloadVideoByURL', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    url: 'https://www.bilibili.com/bangumi/play/ss48690',
+    format: 0
+  })
+});
+
+// 轮询任务状态
+const status = await fetch(`http://127.0.0.1:8098/api/getTaskStatus?task_id=${taskId}`);
+
+// 下载视频文件
+const video = await fetch(`http://127.0.0.1:8098/api/downloadVideo?task_id=${taskId}`);
+```
 
 ## 其他说明
 
